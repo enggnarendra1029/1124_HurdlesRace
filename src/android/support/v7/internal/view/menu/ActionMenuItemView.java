@@ -1,0 +1,401 @@
+// Decompiled by Jad v1.5.8e. Copyright 2001 Pavel Kouznetsov.
+// Jad home page: http://www.geocities.com/kpdus/jad.html
+// Decompiler options: braces fieldsfirst space lnc 
+
+package android.support.v7.internal.view.menu;
+
+import android.content.Context;
+import android.content.res.Configuration;
+import android.content.res.Resources;
+import android.content.res.TypedArray;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.support.v4.view.ViewCompat;
+import android.support.v7.internal.text.AllCapsTransformationMethod;
+import android.support.v7.internal.widget.CompatTextView;
+import android.support.v7.widget.ListPopupWindow;
+import android.text.TextUtils;
+import android.util.AttributeSet;
+import android.util.DisplayMetrics;
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Toast;
+
+// Referenced classes of package android.support.v7.internal.view.menu:
+//            MenuItemImpl
+
+public class ActionMenuItemView extends CompatTextView
+    implements MenuView.ItemView, android.view.View.OnClickListener, android.view.View.OnLongClickListener, android.support.v7.widget.ActionMenuView.ActionMenuChildView
+{
+    private class ActionMenuItemForwardingListener extends android.support.v7.widget.ListPopupWindow.ForwardingListener
+    {
+
+        final ActionMenuItemView this$0;
+
+        public ListPopupWindow getPopup()
+        {
+            if (mPopupCallback != null)
+            {
+                return mPopupCallback.getPopup();
+            } else
+            {
+                return null;
+            }
+        }
+
+        protected boolean onForwardingStarted()
+        {
+            MenuBuilder.ItemInvoker iteminvoker = mItemInvoker;
+            boolean flag = false;
+            if (iteminvoker != null)
+            {
+                boolean flag1 = mItemInvoker.invokeItem(mItemData);
+                flag = false;
+                if (flag1)
+                {
+                    ListPopupWindow listpopupwindow = getPopup();
+                    flag = false;
+                    if (listpopupwindow != null)
+                    {
+                        boolean flag2 = listpopupwindow.isShowing();
+                        flag = false;
+                        if (flag2)
+                        {
+                            flag = true;
+                        }
+                    }
+                }
+            }
+            return flag;
+        }
+
+        protected boolean onForwardingStopped()
+        {
+            ListPopupWindow listpopupwindow = getPopup();
+            if (listpopupwindow != null)
+            {
+                listpopupwindow.dismiss();
+                return true;
+            } else
+            {
+                return false;
+            }
+        }
+
+        public ActionMenuItemForwardingListener()
+        {
+            this$0 = ActionMenuItemView.this;
+            super(ActionMenuItemView.this);
+        }
+    }
+
+    public static abstract class PopupCallback
+    {
+
+        public abstract ListPopupWindow getPopup();
+
+        public PopupCallback()
+        {
+        }
+    }
+
+
+    private static final int MAX_ICON_SIZE = 32;
+    private static final String TAG = "ActionMenuItemView";
+    private boolean mAllowTextWithIcon;
+    private boolean mExpandedFormat;
+    private android.support.v7.widget.ListPopupWindow.ForwardingListener mForwardingListener;
+    private Drawable mIcon;
+    private MenuItemImpl mItemData;
+    private MenuBuilder.ItemInvoker mItemInvoker;
+    private int mMaxIconSize;
+    private int mMinWidth;
+    private PopupCallback mPopupCallback;
+    private int mSavedPaddingLeft;
+    private CharSequence mTitle;
+
+    public ActionMenuItemView(Context context)
+    {
+        this(context, null);
+    }
+
+    public ActionMenuItemView(Context context, AttributeSet attributeset)
+    {
+        this(context, attributeset, 0);
+    }
+
+    public ActionMenuItemView(Context context, AttributeSet attributeset, int i)
+    {
+        super(context, attributeset, i);
+        Resources resources = context.getResources();
+        mAllowTextWithIcon = resources.getBoolean(android.support.v7.appcompat.R.bool.abc_config_allowActionMenuItemTextWithIcon);
+        TypedArray typedarray = context.obtainStyledAttributes(attributeset, android.support.v7.appcompat.R.styleable.ActionMenuItemView, i, 0);
+        mMinWidth = typedarray.getDimensionPixelSize(android.support.v7.appcompat.R.styleable.ActionMenuItemView_android_minWidth, 0);
+        typedarray.recycle();
+        mMaxIconSize = (int)(0.5F + 32F * resources.getDisplayMetrics().density);
+        setOnClickListener(this);
+        setOnLongClickListener(this);
+        setTransformationMethod(new AllCapsTransformationMethod(context));
+        mSavedPaddingLeft = -1;
+    }
+
+    private void updateTextButtonVisibility()
+    {
+        CharSequence charsequence;
+label0:
+        {
+            boolean flag;
+            boolean flag1;
+            if (!TextUtils.isEmpty(mTitle))
+            {
+                flag = true;
+            } else
+            {
+                flag = false;
+            }
+            if (mIcon != null)
+            {
+                boolean flag2 = mItemData.showsTextAsAction();
+                flag1 = false;
+                if (!flag2)
+                {
+                    break label0;
+                }
+                if (!mAllowTextWithIcon)
+                {
+                    boolean flag3 = mExpandedFormat;
+                    flag1 = false;
+                    if (!flag3)
+                    {
+                        break label0;
+                    }
+                }
+            }
+            flag1 = true;
+        }
+        if (flag & flag1)
+        {
+            charsequence = mTitle;
+        } else
+        {
+            charsequence = null;
+        }
+        setText(charsequence);
+    }
+
+    public MenuItemImpl getItemData()
+    {
+        return mItemData;
+    }
+
+    public boolean hasText()
+    {
+        return !TextUtils.isEmpty(getText());
+    }
+
+    public void initialize(MenuItemImpl menuitemimpl, int i)
+    {
+        mItemData = menuitemimpl;
+        setIcon(menuitemimpl.getIcon());
+        setTitle(menuitemimpl.getTitleForItemView(this));
+        setId(menuitemimpl.getItemId());
+        int j;
+        if (menuitemimpl.isVisible())
+        {
+            j = 0;
+        } else
+        {
+            j = 8;
+        }
+        setVisibility(j);
+        setEnabled(menuitemimpl.isEnabled());
+        if (menuitemimpl.hasSubMenu() && mForwardingListener == null)
+        {
+            mForwardingListener = new ActionMenuItemForwardingListener();
+        }
+    }
+
+    public boolean needsDividerAfter()
+    {
+        return hasText();
+    }
+
+    public boolean needsDividerBefore()
+    {
+        return hasText() && mItemData.getIcon() == null;
+    }
+
+    public void onClick(View view)
+    {
+        if (mItemInvoker != null)
+        {
+            mItemInvoker.invokeItem(mItemData);
+        }
+    }
+
+    public void onConfigurationChanged(Configuration configuration)
+    {
+        if (android.os.Build.VERSION.SDK_INT >= 8)
+        {
+            super.onConfigurationChanged(configuration);
+        }
+        mAllowTextWithIcon = getContext().getResources().getBoolean(android.support.v7.appcompat.R.bool.abc_config_allowActionMenuItemTextWithIcon);
+        updateTextButtonVisibility();
+    }
+
+    public boolean onLongClick(View view)
+    {
+        if (hasText())
+        {
+            return false;
+        }
+        int ai[] = new int[2];
+        Rect rect = new Rect();
+        getLocationOnScreen(ai);
+        getWindowVisibleDisplayFrame(rect);
+        Context context = getContext();
+        int i = getWidth();
+        int j = getHeight();
+        int k = ai[1] + j / 2;
+        int l = ai[0] + i / 2;
+        if (ViewCompat.getLayoutDirection(view) == 0)
+        {
+            l = context.getResources().getDisplayMetrics().widthPixels - l;
+        }
+        Toast toast = Toast.makeText(context, mItemData.getTitle(), 0);
+        if (k < rect.height())
+        {
+            toast.setGravity(0x800035, l, j);
+        } else
+        {
+            toast.setGravity(81, 0, j);
+        }
+        toast.show();
+        return true;
+    }
+
+    protected void onMeasure(int i, int j)
+    {
+        boolean flag = hasText();
+        if (flag && mSavedPaddingLeft >= 0)
+        {
+            super.setPadding(mSavedPaddingLeft, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+        }
+        super.onMeasure(i, j);
+        int k = android.view.View.MeasureSpec.getMode(i);
+        int l = android.view.View.MeasureSpec.getSize(i);
+        int i1 = getMeasuredWidth();
+        int j1;
+        if (k == 0x80000000)
+        {
+            j1 = Math.min(l, mMinWidth);
+        } else
+        {
+            j1 = mMinWidth;
+        }
+        if (k != 0x40000000 && mMinWidth > 0 && i1 < j1)
+        {
+            super.onMeasure(android.view.View.MeasureSpec.makeMeasureSpec(j1, 0x40000000), j);
+        }
+        if (!flag && mIcon != null)
+        {
+            super.setPadding((getMeasuredWidth() - mIcon.getBounds().width()) / 2, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+        }
+    }
+
+    public boolean onTouchEvent(MotionEvent motionevent)
+    {
+        if (mItemData.hasSubMenu() && mForwardingListener != null && mForwardingListener.onTouch(this, motionevent))
+        {
+            return true;
+        } else
+        {
+            return super.onTouchEvent(motionevent);
+        }
+    }
+
+    public boolean prefersCondensedTitle()
+    {
+        return true;
+    }
+
+    public void setCheckable(boolean flag)
+    {
+    }
+
+    public void setChecked(boolean flag)
+    {
+    }
+
+    public void setExpandedFormat(boolean flag)
+    {
+        if (mExpandedFormat != flag)
+        {
+            mExpandedFormat = flag;
+            if (mItemData != null)
+            {
+                mItemData.actionFormatChanged();
+            }
+        }
+    }
+
+    public void setIcon(Drawable drawable)
+    {
+        mIcon = drawable;
+        if (drawable != null)
+        {
+            int i = drawable.getIntrinsicWidth();
+            int j = drawable.getIntrinsicHeight();
+            if (i > mMaxIconSize)
+            {
+                float f1 = (float)mMaxIconSize / (float)i;
+                i = mMaxIconSize;
+                j = (int)(f1 * (float)j);
+            }
+            if (j > mMaxIconSize)
+            {
+                float f = (float)mMaxIconSize / (float)j;
+                j = mMaxIconSize;
+                i = (int)(f * (float)i);
+            }
+            drawable.setBounds(0, 0, i, j);
+        }
+        setCompoundDrawables(drawable, null, null, null);
+        updateTextButtonVisibility();
+    }
+
+    public void setItemInvoker(MenuBuilder.ItemInvoker iteminvoker)
+    {
+        mItemInvoker = iteminvoker;
+    }
+
+    public void setPadding(int i, int j, int k, int l)
+    {
+        mSavedPaddingLeft = i;
+        super.setPadding(i, j, k, l);
+    }
+
+    public void setPopupCallback(PopupCallback popupcallback)
+    {
+        mPopupCallback = popupcallback;
+    }
+
+    public void setShortcut(boolean flag, char c)
+    {
+    }
+
+    public void setTitle(CharSequence charsequence)
+    {
+        mTitle = charsequence;
+        setContentDescription(mTitle);
+        updateTextButtonVisibility();
+    }
+
+    public boolean showsIcon()
+    {
+        return true;
+    }
+
+
+
+}

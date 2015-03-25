@@ -1,0 +1,24 @@
+// Decompiled by Jad v1.5.8e. Copyright 2001 Pavel Kouznetsov.
+// Jad home page: http://www.geocities.com/kpdus/jad.html
+// Decompiler options: braces fieldsfirst space lnc 
+
+package org.andengine.entity.modifier;
+
+import org.andengine.util.modifier.BaseModifier;
+
+// Referenced classes of package org.andengine.entity.modifier:
+//            IEntityModifier
+
+public abstract class EntityModifier extends BaseModifier
+    implements IEntityModifier
+{
+
+    public EntityModifier()
+    {
+    }
+
+    public EntityModifier(IEntityModifier.IEntityModifierListener ientitymodifierlistener)
+    {
+        super(ientitymodifierlistener);
+    }
+}
